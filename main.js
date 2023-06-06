@@ -7,17 +7,14 @@ const WebSocket = require("ws")
 const http_port = process.env.HTTP_PORT || 3001;
 const p2p_port = process.env.P2P_PORT || 6001;
 const initialPeers = process.env.PEERS ? process.env.PEERS.split(',') : [];
-const difficulty = 4;
 
 class Block {
-    constructor(index, previousHash, timestamp, data, hash, difficulty, nonce) {
+    constructor(index, previousHash, timestamp, data, hash) {
         this.index = index
         this.previousHash = previousHash
         this.timestamp = timestamp
         this.data = data
         this.hash = hash.toString()
-        this.difficulty = difficulty;
-        this.nonce = nonce;
     }
 }
 
@@ -30,7 +27,7 @@ const MessageType = {
 
 const getGenesisBlock = () => {
     return new Block(0, "0", 1682839690,
-        "RUT-MIIT first block", "8d9d5a7ff4a78042ea6737bf59c772f8ed27ef3c9b576eac1976c91aaf48d2de", 0, 0)
+        "RUT-MIIT first block", "8d9d5a7ff4a78042ea6737bf59c772f8ed27ef3c9b576eac1976c91aaf48d2de")
 }
 
 let blockchain = [getGenesisBlock()]
@@ -68,49 +65,9 @@ const initHttpServer = () => {
 const mineBlock = (blockData) => {
     let previousBlock = getLatestBlock();
     let nextIndex = previousBlock.index + 1;
-    let nonce = 0;
     let nextTimestamp = new Date().getTime() / 1000;
-    let nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockData, nonce);
-    let usefulWorkData = generateUsefulWorkData();
-
-    while (!hashFulfillsCondition(nextHash) || !doUsefulWork(usefulWorkData)) {
-        nonce++;
-        nextTimestamp = new Date().getTime() / 1000;
-        nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockData, nonce)
-        console.log("\"index\":" + nextIndex + ",\"previousHash\":" +
-            previousBlock.hash + "\"timestamp\":" +
-            nextTimestamp + ",\"data\":" +
-            blockData + ",\x1b[33mhash: " +
-            nextHash + " \x1b[0m," + "\"difficulty\":" +
-            difficulty + " \x1b[33mnonce: " + nonce + " \x1b[0m ");
-    }
-    return new Block(nextIndex, previousBlock.hash, nextTimestamp, blockData, nextHash, difficulty, nonce);
-};
-
-const hashFulfillsCondition = (hash) => {
-    for (let i = 0; i < 12; i++) {
-        let digit = parseInt(hash[i], 16);
-        if (isNaN(digit) || digit % 2 !== 0) {
-            return false;
-        }
-    }
-    return true;
-};
-
-
-const generateUsefulWorkData = () => {
-    let arrayLength = Math.floor(Math.random() * 100) + 1;
-    let data = [];
-    for (let i = 0; i < arrayLength; i++) {
-        data.push(Math.random() * 100);
-    }
-    return data;
-};
-
-const doUsefulWork = (data) => {
-    let sum = data.reduce((a, b) => a + b, 0);
-    console.log('Sum of array: ' + sum);
-    return sum > 50;
+    let nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockData);
+    return new Block(nextIndex, previousBlock.hash, nextTimestamp, blockData, nextHash);
 };
 
 const initP2PServer = () => {
@@ -118,6 +75,7 @@ const initP2PServer = () => {
     server.on('connection', ws => initConnection(ws))
     console.log('listening websocket p2p port on: ' + p2p_port)
 };
+
 
 const initConnection = (ws) => {
     sockets.push(ws)
